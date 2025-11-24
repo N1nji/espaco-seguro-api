@@ -59,6 +59,7 @@ httpRequests/
 modules.xml
 contentModel.xml
 projectSettingsUpdater.xml
+/saude_homem_mvp/
 
 # Rider NuGet restore info
 *.restore.info
