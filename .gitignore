@@ -59,6 +59,12 @@ httpRequests/
 modules.xml
 contentModel.xml
 projectSettingsUpdater.xml
+postgres_data/
+espaco_db_data/
+pg_data/
+/backend/
+*/postgres_data/
+*/espaco_db_data/
 /saude_homem_mvp/
 
 # Rider NuGet restore info
