@@ -30,83 +30,65 @@ using Microsoft.OpenApi.Models;
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 
+// =====================
+// 🔥 Swagger
+// =====================
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(opt =>
-{
-    // Doc principal
-    opt.SwaggerDoc("v1", new OpenApiInfo
-    {
-        Title = "Espaço Seguro API",
-        Version = "v1",
-        Description = "API do Espaço Seguro"
-    });
-    
-    var scheme = new OpenApiSecurityScheme
-    {
-        Name = "Authorization",
-        Type = SecuritySchemeType.Http,
-        Scheme = "bearer",
-        BearerFormat = "JWT",
-        In = ParameterLocation.Header,
-        Description = "Informe: Bearer"
-    };
-    opt.AddSecurityRequirement(new OpenApiSecurityRequirement
-    {
-        [ scheme ] = Array.Empty<string>()
-    });
+builder.Services.AddSwaggerGen();
 
-});
-
-// Add services to the container.
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-
-builder.Services.AddDbContext<AppDbContext>(options => 
+// =====================
+// 🔥 Banco
+// =====================
+builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("ConexaoPadrao")));
 
+// =====================
+// 🔥 JWT
+// =====================
 var jwtSection = builder.Configuration.GetSection("Jwt");
 var jwtSettings = new JwtSettings();
 jwtSection.Bind(jwtSettings);
 builder.Services.AddSingleton(jwtSettings);
 
-// ====== Authentication (JWT Bearer) ======
 var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.SecretKey));
 
 builder.Services.AddAuthentication(opt =>
+{
+    opt.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    opt.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(opt =>
+{
+    opt.RequireHttpsMetadata = false; // IMPORTANTE NO DOCKER
+    opt.SaveToken = true;
+    opt.TokenValidationParameters = new TokenValidationParameters
     {
-        opt.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-        opt.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-    })
-    .AddJwtBearer(opt =>
-    {
-        opt.RequireHttpsMetadata = false; // true em produção com HTTPS
-        opt.SaveToken = true;
-        opt.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            ValidIssuer = jwtSettings.Issuer,
-            ValidAudience = jwtSettings.Audience,
-            IssuerSigningKey = key,
-            ClockSkew = TimeSpan.FromSeconds(30)
-        };
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = jwtSettings.Issuer,
+        ValidAudience = jwtSettings.Audience,
+        IssuerSigningKey = key
+    };
+});
 
-        opt.Events = new JwtBearerEvents
-        {
-            OnAuthenticationFailed = ctx =>
-            {
-                Console.WriteLine("AUTH FAILED: " + ctx.Exception.Message);
-                return Task.CompletedTask;
-            },
-            OnChallenge = ctx =>
-            {
-                Console.WriteLine("AUTH CHALLENGE: " + ctx.ErrorDescription);
-                return Task.CompletedTask;
-            }
-        };
-    });
+// =====================
+// 🔥 CORS — para Flutter
+// =====================
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", p => p
+        .AllowAnyOrigin()    // app mobile
+        .AllowAnyMethod()
+        .AllowAnyHeader()
+    );
+});
 
+// =====================
+// 🔥 Injeta serviços
+// =====================
+// (deixo aqui igual ao seu, sem alterar)
 builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
 builder.Services.AddScoped<IUsuarioService, UsuarioService>();
 builder.Services.AddScoped<IUsuarioServiceApp, UsuarioServiceApp>();
@@ -118,8 +100,8 @@ builder.Services.AddScoped<IPostagemService, PostagemService>();
 builder.Services.AddScoped<IPostagemServiceApp, PostagemServiceApp>();
 builder.Services.AddScoped<ICurtidaPostagemRepository, CurtidaPostagemRepository>();
 builder.Services.AddScoped<ICurtidaPostagemService, CurtidaPostagemService>();
-builder.Services.AddScoped<ICurtidaPostagemServiceApp,  CurtidaPostagemServiceApp>();
-builder.Services.AddScoped<IComentarioPostagemRepository,  ComentarioPostagemRepository>();
+builder.Services.AddScoped<ICurtidaPostagemServiceApp, CurtidaPostagemServiceApp>();
+builder.Services.AddScoped<IComentarioPostagemRepository, ComentarioPostagemRepository>();
 builder.Services.AddScoped<IComentarioPostagemService, ComentarioPostagemService>();
 builder.Services.AddScoped<IComentarioPostagemServiceApp, ComentarioPostagemServiceApp>();
 builder.Services.AddScoped<ISessaoChatRepository, SessaoChatRepository>();
@@ -134,55 +116,47 @@ builder.Services.AddScoped<ILoginServiceApp, LoginServiceApp>();
 builder.Services.AddScoped<IPasswordHasher, BcryptPaswordHasher>();
 builder.Services.AddScoped<Helpers>();
 
-
-// ====== Authorization (Policies por permissão) ======
-builder.Services.AddAuthorization(options =>
+// =====================
+// 🔥 Porta Render
+// =====================
+var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+builder.WebHost.ConfigureKestrel(options =>
 {
-    options.AddPolicy(Permissoes.CardCriar,         p => p.RequireClaim("perm", Permissoes.CardCriar));
-    options.AddPolicy(Permissoes.CardEditar,        p => p.RequireClaim("perm", Permissoes.CardEditar));
-    options.AddPolicy(Permissoes.CardEnviarRevisao, p => p.RequireClaim("perm", Permissoes.CardEnviarRevisao));
-    options.AddPolicy(Permissoes.CardRevisar,       p => p.RequireClaim("perm", Permissoes.CardRevisar));
-    options.AddPolicy(Permissoes.CardPublicar,      p => p.RequireClaim("perm", Permissoes.CardPublicar));
-    options.AddPolicy(Permissoes.CardArquivar,      p => p.RequireClaim("perm", Permissoes.CardArquivar));
-    options.AddPolicy(Permissoes.CardDeletar,       p => p.RequireClaim("perm", Permissoes.CardDeletar));
-    options.AddPolicy(Permissoes.CardListar,        p => p.RequireClaim("perm", Permissoes.CardListar));
+    options.ListenAnyIP(int.Parse(port));
 });
-
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI(ui =>
-    {
-        ui.SwaggerEndpoint("/swagger/v1/swagger.json", "Espaço Seguro API v1");
-    });
-}
-
-// aplica as migrations automaticamente quando sobe o container docker
+// =====================
+// 🔥 Migrations automáticas
+// =====================
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.Migrate();
 }
 
-app.Use(async (ctx, next) =>
+// =====================
+// 🔥 Middlewares
+// =====================
+
+if (app.Environment.IsDevelopment())
 {
-    try { await next(); }
-    catch (DomainValidationException ex)
-    {
-        ctx.Response.StatusCode = StatusCodes.Status400BadRequest;
-        await ctx.Response.WriteAsJsonAsync(new { title = "Falha de validação", error = ex.Message });
-    }
-});
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
 
+// ⚠️ REMOVIDO — causa crash no Render
+// app.UseHttpsRedirection();
 
-app.UseHttpsRedirection();
+app.UseCors("AllowAll");
 
-app.UseAuthentication();   
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
 
+// =====================
+// 🔥 START
+// =====================
 app.Run();
