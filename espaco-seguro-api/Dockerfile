@@ -5,11 +5,14 @@ EXPOSE 8080
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-COPY espaco-seguro-api/espaco-seguro-api.csproj .
+# copia apenas o csproj para restaurar dependências
+COPY espaco-seguro-api/espaco-seguro-api.csproj ./ 
 RUN dotnet restore "./espaco-seguro-api.csproj"
 
-COPY espaco-seguro-api/ .
+# copia todo o código
+COPY espaco-seguro-api/ ./
 
+# build
 RUN dotnet build "./espaco-seguro-api.csproj" -c Release -o /app/build
 
 FROM build AS publish
