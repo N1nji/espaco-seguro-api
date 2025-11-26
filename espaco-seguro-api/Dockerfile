@@ -5,18 +5,18 @@ EXPOSE 8080
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-# copia apenas o csproj para restaurar dependências
-COPY espaco-seguro-api/espaco-seguro-api.csproj ./ 
-RUN dotnet restore "./espaco-seguro-api.csproj"
+# copia o csproj do diretório atual (Root Directory já ajustado no Render)
+COPY espaco-seguro-api.csproj ./
+RUN dotnet restore "espaco-seguro-api.csproj"
 
-# copia todo o código
-COPY espaco-seguro-api/ ./
+# copia todo o código para dentro do container
+COPY . ./
 
 # build
-RUN dotnet build "./espaco-seguro-api.csproj" -c Release -o /app/build
+RUN dotnet build "espaco-seguro-api.csproj" -c Release -o /app/build
 
 FROM build AS publish
-RUN dotnet publish "./espaco-seguro-api.csproj" -c Release -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "espaco-seguro-api.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
 FROM base AS final
 WORKDIR /app
