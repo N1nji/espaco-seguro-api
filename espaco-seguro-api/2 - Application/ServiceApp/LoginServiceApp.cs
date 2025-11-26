@@ -37,7 +37,8 @@ public sealed class LoginServiceApp : ILoginServiceApp
             ExpiracaoTokenAcesso   = _tokenFactory.ObterExpiracaoTokenAcesso(),
             Email       = usuario.Email,
             Nome        = usuario.Nome,
-            Funcao      = usuario.Funcao.ToString()
+            Funcao      = usuario.Funcao.ToString(),
+            UsuarioId = usuario.Id
         };
     }
 }

@@ -1,21 +1,19 @@
 ﻿FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
-USER $APP_UID
 WORKDIR /app
 EXPOSE 8080
-EXPOSE 8081
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
-ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY ["espaco-seguro-api/espaco-seguro-api/espaco-seguro-api.csproj", "espaco-seguro-api/"]
-RUN dotnet restore "espaco-seguro-api/espaco-seguro-api/espaco-seguro-api.csproj"
-COPY . .
-WORKDIR "/src/espaco-seguro-api"
-RUN dotnet build "./espaco-seguro-api.csproj" -c $BUILD_CONFIGURATION -o /app/build
+
+COPY espaco-seguro-api/espaco-seguro-api.csproj .
+RUN dotnet restore "./espaco-seguro-api.csproj"
+
+COPY espaco-seguro-api/ .
+
+RUN dotnet build "./espaco-seguro-api.csproj" -c Release -o /app/build
 
 FROM build AS publish
-ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "./espaco-seguro-api.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "./espaco-seguro-api.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
 FROM base AS final
 WORKDIR /app

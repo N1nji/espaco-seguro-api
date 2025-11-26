@@ -7,4 +7,5 @@ public class LoginResponse
     public string Nome { get; set; }
     public string Email { get; set; }
     public string Funcao { get; set; }
+    public Guid UsuarioId { get; set; }
 }

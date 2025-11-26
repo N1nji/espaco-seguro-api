@@ -20,7 +20,7 @@ public class UsuarioController(IUsuarioServiceApp usuarioServiceApp) : Controlle
             
             await usuarioServiceApp.Criar(usuario);
             
-            return Created();
+            return StatusCode(201);
         }
         catch (Exception ex)
         {
